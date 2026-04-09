@@ -478,6 +478,11 @@ public:
     /** Returns a new EditItemID to use for a new EditItem, avoiding some IDs. */
     EditItemID createNewItemID (const std::vector<EditItemID>& idsToAvoid) const;
 
+    /** Reset the internal itemID counter so the next createNewItemID() call
+        re-scans all existing IDs. Must be called after bulk state replacement
+        (e.g., project load) to prevent duplicate itemIDs. */
+    void resetNextItemID() const { nextID.store (0); }
+
     //==============================================================================
     /** Returns and Clip[s] with the given linkGroupID.
         @see Clip::setLinkGroupID
