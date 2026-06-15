@@ -1087,7 +1087,41 @@ void ExternalPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v)
         chunk.fromBase64Encoding (s);
 
         if (chunk.getSize() > 0)
+        {
+            // [SAS-FIX 2026-06-14] A live VST3 instance may DEFER
+            // setStateInformation: the patch is queued and only commits when the
+            // message loop is next pumped. The runtime apply path (preset shuffle
+            // / sound history) executes during the engine's manual poll() drain,
+            // which is NOT a dispatch loop, so a deferred patch-load would never
+            // commit and the sound would silently stay put. Apply still goes
+            // through callBlockingCatching (preserving the IPC/editor threading
+            // work); the leading getStateInformation realises the live patch
+            // context before the swap, then we pump the message loop ONCE so a
+            // deferred load commits immediately rather than at some incidental
+            // later dispatch.
+            //
+            // Do NOT add an edit.isLoading() guard here: Edit::isLoadInProgress
+            // defaults to true and is only cleared inside loadEditFromValueTree,
+            // so a freshly CREATED (non-loaded) project keeps it stuck true and
+            // the pump would be skipped on every shuffle. At real project load
+            // tracktion's own post-load dispatch commits the patches anyway, so
+            // the pump there is merely redundant, not harmful.
+            //
+            // NOTE: the upstream regression that made shuffle inaudible was the
+            // engine instantiating the AudioUnit Surge (which ignores our VST3
+            // preset blobs) for bare-name lookups; that is fixed in
+            // PluginManager::loadPlugin (prefer VST3). This pump handles the
+            // separate, intermittent VST3-defer case.
+            juce::MemoryBlock probe;
+            pi->getStateInformation (probe);
+            juce::ignoreUnused (probe);
+
             callBlockingCatching ([&pi, &chunk] { pi->setStateInformation (chunk.getData(), (int) chunk.getSize()); });
+
+            if (auto* mm = juce::MessageManager::getInstanceWithoutCreating();
+                mm != nullptr && mm->isThisTheMessageThread())
+                mm->runDispatchLoopUntil (40);
+        }
     }
 }
 
