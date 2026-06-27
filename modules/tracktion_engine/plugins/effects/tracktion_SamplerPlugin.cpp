@@ -310,7 +310,13 @@ void SamplerPlugin::applyToBuffer (const PluginRenderContext& fc)
 
                     for (auto playingNote : playingNotes)
                     {
-                        if (playingNote->note == note && ! playingNote->openEnded)
+                        // [SAS patch] Choke a same-note voice on RETRIGGER even when it
+                        // is open-ended, so one-shot drums/instruments don't stack voices
+                        // on fast same-note rolls. Open-ended voices still ignore note-OFF
+                        // (handler below stays gated on !openEnded) and otherwise ring out
+                        // to their natural end. Upstream gated this choke on !openEnded,
+                        // which meant open-ended one-shots were never choked.
+                        if (playingNote->note == note)
                         {
                             playingNote->samplesLeftToPlay = std::min (playingNote->samplesLeftToPlay,
                                                                        std::max (minimumSamplesToPlayWhenStopping,
