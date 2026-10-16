@@ -1699,7 +1699,7 @@ bool DeviceManager::hasOutputClipped (bool reset)
     return hasClipped;
 }
 
-void DeviceManager::addContext (EditPlaybackContext* c)
+void DeviceManager::addContext (EditPlaybackContext* c, bool waitForNextBlock)
 {
     TRACKTION_ASSERT_MESSAGE_THREAD
 
@@ -1711,6 +1711,9 @@ void DeviceManager::addContext (EditPlaybackContext* c)
         c->resyncToGlobalStreamTime ({ lastStreamTime, lastStreamTime + getBlockSize() / currentSampleRate }, currentSampleRate);
         activeContexts.addIfNotAlreadyThere (c);
     }
+
+    if (! waitForNextBlock)
+        return;
 
     for (int i = 200; --i >= 0;)
     {

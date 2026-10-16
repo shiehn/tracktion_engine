@@ -220,7 +220,12 @@ public:
     juce::OwnedArray<WaveOutputDevice> waveOutputs;
 
     //==============================================================================
-    void addContext (EditPlaybackContext*);
+    /** Adds a context to the ones the audio callback processes, its reference range resynced to the current
+        stream time (under the context lock). By default this then blocks the calling thread for up to 200ms,
+        until the device's stream time has moved on by a block; pass waitForNextBlock = false to return as soon
+        as the context is in the list (the next device block is then the first one it processes, from the same
+        resynced range). */
+    void addContext (EditPlaybackContext*, bool waitForNextBlock = true);
     void removeContext (EditPlaybackContext*);
 
     //==============================================================================
