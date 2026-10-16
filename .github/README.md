@@ -33,13 +33,14 @@ Signals & Sorcery drives Tracktion Engine differently from a typical DAW, and th
 
 ## The patches
 
-All three sit on top of upstream `develop` (v3.2.0 plus later upstream commits) and total 46 lines.
+All four sit on top of upstream `develop` (v3.2.0 plus later upstream commits) and total 56 lines.
 
 | Commit | Area | What and why |
 |---|---|---|
 | `d5dbd51f` | Edit | Adds `Edit::resetNextItemID()`. After a loaded project replaces a live Edit's state, the item ID counter could hand out IDs that already exist in the project, which made new tracks collide. Signals & Sorcery calls it after every load, so the next ID is re-scanned. |
 | `6ce32314` | External plugins | Some VST3 plugins (Surge XT among them) defer `setStateInformation` until the message loop runs. Signals & Sorcery applies patches from its own polling loop, which is not a dispatch loop, so a deferred patch could silently never land. `restorePluginStateFromValueTree` now reads the state once and pumps the message loop briefly, so the new patch commits right away. |
 | `8e31600c` | Sampler | Upstream only chokes a same-note voice on retrigger when the sound is not open-ended. Signals & Sorcery plays drums and one-shots as open-ended samples, so fast same-note rolls stacked voices. Same-note voices are now choked on retrigger even when open-ended; note-off still lets open-ended voices ring out. |
+| `25067fa9` | Playback | `DeviceManager::addContext` sleeps the calling thread until the device's stream time moves on (up to one device block). Signals & Sorcery takes its composition graph out of the device callback while the engine is idle and puts it back right before a Play, so that sleep delayed the Play. `addContext (context, false)` skips the wait; the default is unchanged. |
 
 These are small and general enough to offer upstream.
 
